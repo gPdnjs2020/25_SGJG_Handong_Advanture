@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:handong_adventure/firebase_options.dart';
 import 'package:handong_adventure/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:handong_adventure/rank.dart';
 
 void main() async {
   // 1. 플러터 엔진 초기화 및 파이어베이스 연결
@@ -57,9 +58,7 @@ class _MainPageState extends State<MainPage> {
     const Center(
       child: Text('여기에 지도가 들어갑니다 (Map)', style: TextStyle(fontSize: 24)),
     ),
-    const Center(
-      child: Text('랭킹 페이지 (Ranking)', style: TextStyle(fontSize: 24)),
-    ),
+    const Center(child: const RankingPage()),
     // 마이페이지는 별도 위젯으로 분리해서 사용자 이름 표시 가능
     const MyPagePlaceholder(),
   ];
