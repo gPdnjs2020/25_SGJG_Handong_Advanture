@@ -22,6 +22,9 @@ class _SignUpPageState extends State<SignUpPage> {
     final pw = _pwController.text.trim();
     final pwConfirm = _pwConfirmController.text.trim();
 
+    print('--- 회원가입 시도 시작 ---'); // 로그 1
+    print('입력된 정보: $id, $name');
+
     if (id.isEmpty || name.isEmpty || pw.isEmpty || pwConfirm.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -48,50 +51,74 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
-      // 1. Firebase Auth에 계정 생성 (이메일/비번 방식)
+      // 1. Auth 계정 생성 시도
+      print('1. Firebase Auth 계정 생성 요청 중...');
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-            email: '$id@handong.edu', // 학번을 이메일 형식으로 변환
+            email: '$id@handong.edu',
             password: pw,
           );
+      print('>>> Auth 계정 생성 성공! UID: ${userCredential.user!.uid}');
 
-      // 2. Firestore DB에 사용자 추가 정보 저장
-      // 'users' 컬렉션 -> 문서 ID는 'uid' -> 필드값 저장
+      // 2. Firestore 저장 시도
+      print('2. Firestore DB 저장 요청 중...');
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
             'studentId': id,
             'name': name,
-            'createdAt': DateTime.now(),
-            'score': 0, // 초기 점수
-            'level': 1, // 초기 레벨
+            'createdAt': DateTime.now().toIso8601String(), // 날짜 포맷 안전하게 변경
+            'score': 0,
+            'level': 1,
           });
+      print('>>> Firestore 저장 성공!');
 
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('회원가입 성공! 로그인되었습니다.')));
-        // 회원가입 후 자동으로 로그인이 되므로, 화면을 닫아서 메인으로 가게 함
         Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
-      String message = '회원가입 실패';
+      // Auth 관련 에러 (비밀번호 약함, 이미 있는 아이디 등)
+      print('!!! Auth 에러 발생: Code=${e.code}, Message=${e.message}');
+
+      String message = '회원가입 실패: ${e.message}';
       if (e.code == 'weak-password') {
         message = '비밀번호가 너무 약합니다.';
       } else if (e.code == 'email-already-in-use') {
         message = '이미 가입된 학번입니다.';
+      } else if (e.code == 'operation-not-allowed') {
+        message = '이메일/비밀번호 로그인이 비활성화되어 있습니다. 콘솔 설정을 확인하세요.';
       }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } on FirebaseException catch (e) {
+      // Firestore 관련 에러 (권한 없음 등)
+      print('!!! Firestore DB 에러 발생: Code=${e.code}, Message=${e.message}');
+
+      String message = 'DB 저장 실패: ${e.message}';
+      if (e.code == 'permission-denied') {
+        message = '데이터베이스 권한이 없습니다. (Firestore 규칙을 확인하세요)';
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
+      // 기타 알 수 없는 에러
+      print('!!! 알 수 없는 에러 발생: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('오류가 발생했습니다. 다시 시도해주세요.')));
+        ).showSnackBar(SnackBar(content: Text('알 수 없는 오류: $e')));
       }
     } finally {
       if (mounted) {
@@ -99,6 +126,7 @@ class _SignUpPageState extends State<SignUpPage> {
           _isLoading = false;
         });
       }
+      print('--- 회원가입 시도 종료 ---');
     }
   }
 
