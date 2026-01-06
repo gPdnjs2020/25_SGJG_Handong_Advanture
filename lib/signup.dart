@@ -1,7 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:handong_adventure/main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'handong_theme.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -17,13 +18,42 @@ class _SignUpPageState extends State<SignUpPage> {
   final _pwConfirmController = TextEditingController();
   bool _isLoading = false;
 
+  // 로고 SVG (Login 페이지와 동일)
+  static const String _logoSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" width="99" height="100" viewBox="0 0 99 100" fill="none">
+  <path d="M32.1024 11.8222C32.3388 10.376 33.9989 9.66661 35.2075 10.4955L58.9171 26.7566C60.2179 27.6487 60.0222 29.6253 58.5717 30.2451L30.2248 42.3576C28.7743 42.9774 27.2107 41.7526 27.4652 40.1959L32.1024 11.8222Z" fill="#F9A825"/>
+  <path d="M31.7226 87.3192C31.9589 88.7654 33.6191 89.4748 34.8276 88.6459L58.5372 72.3848C59.838 71.4927 59.6423 69.5161 58.1918 68.8963L29.845 56.7838C28.3945 56.164 26.8309 57.3888 27.0853 58.9455L31.7226 87.3192Z" fill="#F9A825"/>
+  <path d="M10.4214 34.8291C9.5923 33.6208 10.3013 31.9605 11.7475 31.7238L40.12 27.0798C41.6767 26.825 42.9019 28.3883 42.2824 29.8389L30.1766 58.1887C29.5571 59.6393 27.5806 59.8355 26.6882 58.5349L10.4214 34.8291Z" fill="#F9A825"/>
+  <path d="M11.8014 66.5143C10.3546 66.2814 9.64128 64.6229 10.4673 63.4125L26.6725 39.6646C27.5616 38.3617 29.5386 38.5527 30.1618 40.0018L42.3411 68.3201C42.9643 69.7691 41.7432 71.3356 40.1859 71.0848L11.8014 66.5143Z" fill="#F9A825"/>
+  <path d="M66.4557 11.7524C66.2193 10.3062 64.5592 9.59679 63.3507 10.4256L39.641 26.6867C38.3402 27.5789 38.5359 29.5554 39.9864 30.1752L68.3333 42.2878C69.7838 42.9076 71.3474 41.6828 71.0929 40.1261L66.4557 11.7524Z" fill="#F9A825"/>
+  <path d="M66.8355 87.2493C66.5992 88.6956 64.939 89.405 63.7305 88.5761L40.0209 72.315C38.7201 71.4228 38.9158 69.4463 40.3663 68.8265L68.7131 56.7139C70.1636 56.0942 71.7272 57.319 71.4728 58.8757L66.8355 87.2493Z" fill="#F9A825"/>
+  <path d="M88.1367 34.7593C88.9658 33.551 88.2568 31.8907 86.8106 31.654L58.4381 27.01C56.8814 26.7552 55.6563 28.3185 56.2757 29.7691L68.3815 58.1189C69.001 59.5695 70.9775 59.7657 71.8699 58.465L88.1367 34.7593Z" fill="#F9A825"/>
+  <path d="M86.7567 66.4445C88.2035 66.2116 88.9168 64.5531 88.0908 63.3426L71.8856 39.5948C70.9965 38.2919 69.0195 38.4829 68.3963 39.932L56.217 68.2502C55.5938 69.6993 56.8149 71.2657 58.3722 71.015L86.7567 66.4445Z" fill="#F9A825"/>
+  <circle cx="49" cy="49" r="20" fill="white"/>
+  <circle cx="42.5" cy="46.5" r="2.5" fill="#F9A825"/>
+  <circle cx="55.5" cy="46.5" r="2.5" fill="#F9A825"/>
+</svg>
+''';
+
   Future<void> _register() async {
-    if (_pwController.text != _pwConfirmController.text) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')));
+    if (_pwController.text.length < 6) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('비밀번호는 6자리 이상이어야 합니다.')));
       return;
     }
+
+    if (_idController.text.isEmpty ||
+        _nameController.text.isEmpty ||
+        _pwController.text.isEmpty) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('모든 정보를 입력해주세요.')));
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -40,120 +70,265 @@ class _SignUpPageState extends State<SignUpPage> {
             'level': 1,
             'createdAt': DateTime.now().toIso8601String(),
           });
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('가입 성공! 로그인해주세요.')));
+        Navigator.pop(context);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('회원가입 실패')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입 실패: 이미 존재하는 계정이거나 오류가 발생했습니다.')),
+        );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kBgYellow,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            top: 60, // AppBar area
-            bottom: 60,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              decoration: BoxDecoration(
-                color: kCardYellow,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: kTextBlack),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '환영합니다!',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: kTextBlack,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-
-                    _buildInput(_idController, '학번', Icons.badge),
-                    const SizedBox(height: 16),
-                    _buildInput(_nameController, '이름', Icons.face),
-                    const SizedBox(height: 16),
-                    _buildInput(
-                      _pwController,
-                      '비밀번호',
-                      Icons.lock,
-                      obscure: true,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInput(
-                      _pwConfirmController,
-                      '비밀번호 확인',
-                      Icons.check_circle,
-                      obscure: true,
-                    ),
-
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _register,
-                      child: const Text('가입 완료'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Bottom Bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 60,
-            child: Container(color: kNavGrey),
+  // 286x72 크기의 입력 필드 빌더
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required bool obscureText,
+    required String hintText,
+  }) {
+    return Container(
+      width: 286,
+      height: 72,
+      decoration: BoxDecoration(
+        color: HandongColors.inputBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: HandongColors.brownBorder, width: 4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.20),
+            offset: const Offset(4, 4),
+            blurRadius: 0,
           ),
         ],
+      ),
+      alignment: Alignment.center, // 컨테이너 내부 중앙 정렬
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        // 입력 텍스트 스타일: 18sp, OrangeBody (#FDBA74) -> 입력시에도 색상 유지
+        style: HandongTextStyles.inputHint.copyWith(
+          fontSize: 18,
+          color: HandongColors.textOrangeBody,
+          height: 1.2,
+        ),
+        textAlign: TextAlign.center,
+        keyboardType: obscureText ? TextInputType.text : TextInputType.number,
+        decoration: InputDecoration(
+          isCollapsed: true, // 내부 패딩 제거하여 상자 겹침 방지
+          contentPadding: const EdgeInsets.symmetric(vertical: 16), // 수직 중앙 정렬
+          border: InputBorder.none, // TextField 자체 테두리 제거
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          hintText: hintText,
+          // 힌트 스타일: 18sp, OrangeBody (#FDBA74)
+          hintStyle: HandongTextStyles.inputHint.copyWith(
+            fontSize: 18,
+            height: 1.2,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildInput(
-    TextEditingController controller,
-    String hint,
-    IconData icon, {
-    bool obscure = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: const Offset(0, 4),
-            blurRadius: 4,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: HandongColors.yellowBg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: SizedBox(
+            width: 412,
+            height: 917,
+            child: Stack(
+              children: [
+                // 1. 노란색 박스 (Main Container)
+                Positioned(
+                  top: 61,
+                  left: 24,
+                  child: Container(
+                    width: 364,
+                    height: 856,
+                    decoration: BoxDecoration(
+                      color: HandongColors.yellowCard,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    // 박스 내부 Stack
+                    child: Stack(
+                      children: [
+                        // 로고 (Top 161)
+                        Positioned(
+                          top: 161,
+                          left: 133,
+                          child: SvgPicture.string(
+                            _logoSvg,
+                            width: 98.56,
+                            height: 99.07,
+                          ),
+                        ),
+
+                        // 타이틀 (Top 282)
+                        Positioned(
+                          top: 282,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Text(
+                              '만나서 반가워!',
+                              style: HandongTextStyles.title.copyWith(
+                                fontSize: 38,
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                        // 서브타이틀 (Top 322)
+                        Positioned(
+                          top: 322,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Text(
+                              '빈 칸을 채워줘',
+                              style: HandongTextStyles.subtitle.copyWith(
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                        // Input 1: 이름 (Top 372 - 기존 347에서 +25dp 이동하여 겹침 방지)
+                        Positioned(
+                          top: 372,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: _buildInputField(
+                              controller: _nameController,
+                              obscureText: false,
+                              hintText: '이름이 뭐야?',
+                            ),
+                          ),
+                        ),
+
+                        // Input 2: 학번 (Top 469 - 기존 444에서 +25dp 이동)
+                        Positioned(
+                          top: 469,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: _buildInputField(
+                              controller: _idController,
+                              obscureText: false,
+                              hintText: '학번 알려줘!',
+                            ),
+                          ),
+                        ),
+
+                        // Input 3: 비밀번호 (Top 566 - 기존 541에서 +25dp 이동)
+                        Positioned(
+                          top: 566,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: _buildInputField(
+                              controller: _pwController,
+                              obscureText: true,
+                              hintText: '둘만의 비밀번호를 만들어보자',
+                            ),
+                          ),
+                        ),
+
+                        // 버튼: 완료 (Top 685 - 기존 660에서 +25dp 이동)
+                        Positioned(
+                          top: 685,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _isLoading ? null : _register,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 286,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    color: HandongColors.bluePoint,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                      : Text(
+                                          '완료!',
+                                          style: HandongTextStyles.buttonText
+                                              .copyWith(
+                                                fontSize: 28,
+                                                height: 1.2,
+                                              ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // 하단 텍스트 "비밀번호 찾아줄게!" (Top 771 - 기존 746에서 +25dp 이동)
+                        Positioned(
+                          top: 771,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: TextButton(
+                              onPressed: () {},
+                              child: Text(
+                                '비밀번호 찾아줄게!',
+                                style: HandongTextStyles.smallLink.copyWith(
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 2. 뒤로가기 버튼
+                Positioned(
+                  top: 120,
+                  left: 49,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 12.1,
+                      height: 22,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: HandongColors.textGold,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: hint == '학번' ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, color: kTextBlack),
         ),
       ),
     );
