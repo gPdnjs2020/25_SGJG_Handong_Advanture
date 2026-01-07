@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:handong_adventure/findpass.dart';
 import 'handong_theme.dart';
 import 'signup.dart';
 
@@ -299,7 +300,12 @@ class _LoginPageState extends State<LoginPage> {
                           child: Center(
                             child: GestureDetector(
                               onTap: () {
-                                // 비밀번호 찾기 로직
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const FindPassPage(),
+                                  ),
+                                );
                               },
                               child: Text(
                                 '비밀번호 찾아줄게!',
