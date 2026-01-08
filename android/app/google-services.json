@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "377980634564",
+    "project_id": "handong-advanture",
+    "storage_bucket": "handong-advanture.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:377980634564:android:02c333d9a5d4e6b3ed1091",
+        "android_client_info": {
+          "package_name": "com.example.handong_adventure"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD70k7DPGhpkGN9QMRXIZ-JjjH84PHoqiA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
