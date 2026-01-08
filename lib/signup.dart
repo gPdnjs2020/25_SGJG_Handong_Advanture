@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // 프로젝트 확인용
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -15,10 +16,18 @@ class _SignUpPageState extends State<SignUpPage> {
   final _idController = TextEditingController();
   final _nameController = TextEditingController();
   final _pwController = TextEditingController();
-  final _pwConfirmController = TextEditingController();
   bool _isLoading = false;
 
-  // 로고 SVG (Login 페이지와 동일)
+  // 디버깅용: 현재 연결된 프로젝트 ID 가져오기
+  String get _currentProjectId {
+    try {
+      return Firebase.app().options.projectId;
+    } catch (e) {
+      return '연결 실패';
+    }
+  }
+
+  // 로고 SVG
   static const String _logoSvg = '''
 <svg xmlns="http://www.w3.org/2000/svg" width="99" height="100" viewBox="0 0 99 100" fill="none">
   <path d="M32.1024 11.8222C32.3388 10.376 33.9989 9.66661 35.2075 10.4955L58.9171 26.7566C60.2179 27.6487 60.0222 29.6253 58.5717 30.2451L30.2248 42.3576C28.7743 42.9774 27.2107 41.7526 27.4652 40.1959L32.1024 11.8222Z" fill="#F9A825"/>
@@ -36,6 +45,7 @@ class _SignUpPageState extends State<SignUpPage> {
 ''';
 
   Future<void> _register() async {
+    // 1. 비밀번호 길이 확인
     if (_pwController.text.length < 6) {
       if (mounted)
         ScaffoldMessenger.of(
@@ -44,6 +54,7 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    // 2. 빈 칸 확인
     if (_idController.text.isEmpty ||
         _nameController.text.isEmpty ||
         _pwController.text.isEmpty) {
@@ -55,11 +66,18 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     setState(() => _isLoading = true);
+    UserCredential? cred;
+
     try {
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // 3. Firebase Authentication 계정 생성
+      cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: '${_idController.text.trim()}@handong.edu',
         password: _pwController.text.trim(),
       );
+
+      print("Auth created: ${cred.user!.uid}"); // 디버그용 로그
+
+      // 4. Firestore에 유저 정보 저장 (타임아웃 10초)
       await FirebaseFirestore.instance
           .collection('users')
           .doc(cred.user!.uid)
@@ -69,24 +87,46 @@ class _SignUpPageState extends State<SignUpPage> {
             'score': 0,
             'level': 1,
             'createdAt': DateTime.now().toIso8601String(),
-          });
+          })
+          .timeout(const Duration(seconds: 10));
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('가입 성공! 로그인해주세요.')));
         Navigator.pop(context);
       }
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = '회원가입 실패';
+      if (e.code == 'email-already-in-use') {
+        // 이미 가입된 경우: 어떤 프로젝트인지 힌트 제공
+        errorMessage = '이미 가입된 학번입니다.\n(Project: $_currentProjectId)';
+      } else if (e.code == 'weak-password') {
+        errorMessage = '비밀번호 보안 수준이 낮습니다.';
+      } else if (e.code == 'network-request-failed') {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원가입 실패: 이미 존재하는 계정이거나 오류가 발생했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    } catch (e) {
+      // Firestore 저장 실패 시 -> 계정 롤백(삭제)
+      print("Firestore Failed: $e");
+      if (cred != null && cred.user != null) {
+        await cred.user!.delete();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('데이터베이스 오류: $e\n다시 시도해주세요.')));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 286x72 크기의 입력 필드 빌더
+  // 입력 필드 빌더
   Widget _buildInputField({
     required TextEditingController controller,
     required bool obscureText,
@@ -98,6 +138,7 @@ class _SignUpPageState extends State<SignUpPage> {
       decoration: BoxDecoration(
         color: HandongColors.inputBg,
         borderRadius: BorderRadius.circular(12),
+        // 외부 테두리만 설정 (이중 상자 해결)
         border: Border.all(color: HandongColors.brownBorder, width: 4),
         boxShadow: [
           BoxShadow(
@@ -107,11 +148,11 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         ],
       ),
-      alignment: Alignment.center, // 컨테이너 내부 중앙 정렬
+      alignment: Alignment.center,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
-        // 입력 텍스트 스타일: 18sp, OrangeBody (#FDBA74) -> 입력시에도 색상 유지
+        // 입력 중에도 주황색 유지
         style: HandongTextStyles.inputHint.copyWith(
           fontSize: 18,
           color: HandongColors.textOrangeBody,
@@ -120,15 +161,15 @@ class _SignUpPageState extends State<SignUpPage> {
         textAlign: TextAlign.center,
         keyboardType: obscureText ? TextInputType.text : TextInputType.number,
         decoration: InputDecoration(
-          isCollapsed: true, // 내부 패딩 제거하여 상자 겹침 방지
+          isCollapsed: true, // 내부 패딩 제거
           contentPadding: const EdgeInsets.symmetric(vertical: 16), // 수직 중앙 정렬
-          border: InputBorder.none, // TextField 자체 테두리 제거
+          border: InputBorder.none, // 내부 테두리 제거 (이중 상자 해결)
           focusedBorder: InputBorder.none,
           enabledBorder: InputBorder.none,
           errorBorder: InputBorder.none,
           disabledBorder: InputBorder.none,
           hintText: hintText,
-          // 힌트 스타일: 18sp, OrangeBody (#FDBA74)
+          // 힌트 텍스트 스타일
           hintStyle: HandongTextStyles.inputHint.copyWith(
             fontSize: 18,
             height: 1.2,
@@ -149,7 +190,7 @@ class _SignUpPageState extends State<SignUpPage> {
             height: 917,
             child: Stack(
               children: [
-                // 1. 노란색 박스 (Main Container)
+                // 1. 메인 카드 박스
                 Positioned(
                   top: 61,
                   left: 24,
@@ -160,10 +201,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       color: HandongColors.yellowCard,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    // 박스 내부 Stack
                     child: Stack(
                       children: [
-                        // 로고 (Top 161)
+                        // 로고
                         Positioned(
                           top: 161,
                           left: 133,
@@ -174,7 +214,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // 타이틀 (Top 282)
+                        // 타이틀
                         Positioned(
                           top: 282,
                           left: 0,
@@ -191,14 +231,14 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // 서브타이틀 (Top 322)
+                        // 서브타이틀
                         Positioned(
                           top: 322,
                           left: 0,
                           right: 0,
                           child: Center(
                             child: Text(
-                              '너에 대해서 알려줄래?',
+                              '빈 칸을 채워줘',
                               style: HandongTextStyles.subtitle.copyWith(
                                 height: 1.2,
                               ),
@@ -207,7 +247,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // Input 1: 이름 (Top 372 - 기존 347에서 +25dp 이동하여 겹침 방지)
+                        // Input 1: 이름
                         Positioned(
                           top: 372,
                           left: 0,
@@ -221,7 +261,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // Input 2: 학번 (Top 469 - 기존 444에서 +25dp 이동)
+                        // Input 2: 학번
                         Positioned(
                           top: 469,
                           left: 0,
@@ -235,7 +275,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // Input 3: 비밀번호 (Top 566 - 기존 541에서 +25dp 이동)
+                        // Input 3: 비밀번호
                         Positioned(
                           top: 566,
                           left: 0,
@@ -249,7 +289,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
 
-                        // 버튼: 완료 (Top 685 - 기존 660에서 +25dp 이동)
+                        // 버튼: 완료
                         Positioned(
                           top: 685,
                           left: 0,

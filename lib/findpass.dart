@@ -158,7 +158,7 @@ class _FindPassPageState extends State<FindPassPage> {
                           right: 0,
                           child: Center(
                             child: Text(
-                              '비밀번호 찾기',
+                              '비밀번호 찾아줄게!',
                               style: HandongTextStyles.title.copyWith(
                                 fontSize: 38,
                                 height: 1.2,
@@ -175,7 +175,7 @@ class _FindPassPageState extends State<FindPassPage> {
                           right: 0,
                           child: Center(
                             child: Text(
-                              '학번을 알려줘!',
+                              '빈 칸을 채워줘',
                               style: HandongTextStyles.subtitle.copyWith(
                                 height: 1.2,
                               ),
@@ -192,7 +192,7 @@ class _FindPassPageState extends State<FindPassPage> {
                           child: Center(
                             child: _buildInputField(
                               controller: _idController,
-                              hintText: '학번 입력',
+                              hintText: '학번을 알려줘',
                             ),
                           ),
                         ),
@@ -223,7 +223,7 @@ class _FindPassPageState extends State<FindPassPage> {
                                           color: Colors.white,
                                         )
                                       : Text(
-                                          '전송하기!',
+                                          '여길 눌러줘!',
                                           style: HandongTextStyles.buttonText
                                               .copyWith(
                                                 fontSize: 28,

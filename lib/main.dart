@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:handong_adventure/homepg.dart';
 import 'package:handong_adventure/login.dart';
+import 'package:handong_adventure/rank.dart';
 import 'firebase_options.dart';
 
 // ================= 디자인 시스템 (SVG Exact Colors) =================
@@ -109,7 +109,7 @@ class MyApp extends StatelessWidget {
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          if (snapshot.hasData) return const MainPage();
+          if (snapshot.hasData) return const RankingPage();
           return const LoginPage();
         },
       ),

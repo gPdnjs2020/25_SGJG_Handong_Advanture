@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:handong_adventure/findpass.dart';
 import 'handong_theme.dart';
 import 'signup.dart';
+import 'findpass.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +16,13 @@ class _LoginPageState extends State<LoginPage> {
   final _idController = TextEditingController();
   final _pwController = TextEditingController();
   bool _isLoading = false;
+
+  // 언어 설정 상태
+  String _currentLanguage = '한국어';
+
+  // 팝업 상태 관리
+  bool _isLanguageOverlayOpen = false; // 팝업 열림 여부
+  bool _isLanguageListExpanded = false; // 리스트 확장 여부
 
   // 로고 SVG
   static const String _logoSvg = '''
@@ -67,7 +74,130 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // 입력 필드 빌더 (286x72, Border 4px, Shadow)
+  // 언어 선택 오버레이
+  Widget _buildLanguageOverlay(BuildContext context) {
+    if (!_isLanguageOverlayOpen) return const SizedBox.shrink();
+
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            // 배경 누르면 닫힘
+            _isLanguageOverlayOpen = false;
+            _isLanguageListExpanded = false;
+          });
+        },
+        child: Container(
+          color: Colors.black.withOpacity(0.6), // Dim Background
+          child: Center(
+            child: GestureDetector(
+              onTap: () {}, // 박스 클릭 시 배경 클릭 이벤트 방지
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 1. 현재 언어 박스 (상단)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        // 클릭 시 리스트 확장/축소
+                        _isLanguageListExpanded = !_isLanguageListExpanded;
+                      });
+                    },
+                    child: Container(
+                      width: 286,
+                      height: 87,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: HandongColors.brownBorder,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _currentLanguage,
+                            style: HandongTextStyles.languageText, // 32sp
+                          ),
+                          const SizedBox(width: 21),
+                          Icon(
+                            _isLanguageListExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: Colors.black,
+                            size: 30,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 2. 언어 리스트 박스 (하단) - 확장되었을 때만 표시
+                  if (_isLanguageListExpanded)
+                    Container(
+                      width: 286,
+                      height: 168,
+                      // 상단 박스와의 간격
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: HandongColors.brownBorder,
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildLanguageOption('한국어'),
+                          Container(
+                            width: 209,
+                            height: 2,
+                            color: HandongColors.brownBorder,
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          _buildLanguageOption('English'),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(String language) {
+    final bool isSelected = _currentLanguage == language;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentLanguage = language;
+          _isLanguageOverlayOpen = false; // 선택 시 팝업 닫힘
+          _isLanguageListExpanded = false;
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        child: Text(
+          language,
+          style: HandongTextStyles.languageText.copyWith(
+            // 선택된 언어: 주황색, 아니면 검정색
+            color: isSelected
+                ? HandongColors.textOrangeTitle
+                : HandongColors.textBlack,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required bool obscureText,
@@ -79,10 +209,7 @@ class _LoginPageState extends State<LoginPage> {
       decoration: BoxDecoration(
         color: HandongColors.inputBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: HandongColors.brownBorder,
-          width: 4,
-        ), // Border 4px
+        border: Border.all(color: HandongColors.brownBorder, width: 4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.20),
@@ -91,27 +218,29 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          obscureText: obscureText,
-          // 입력 글씨 색상 고정: HandongColors.textOrangeBody (#FDBA74)
-          style: HandongTextStyles.inputText.copyWith(
+      alignment: Alignment.center,
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        style: HandongTextStyles.inputText.copyWith(
+          fontSize: 24,
+          height: 1.2,
+          color: HandongColors.textOrangeBody,
+        ),
+        textAlign: TextAlign.center,
+        keyboardType: obscureText ? TextInputType.text : TextInputType.number,
+        decoration: InputDecoration(
+          isCollapsed: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+          border: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          hintText: hintText,
+          hintStyle: HandongTextStyles.inputHint.copyWith(
+            fontSize: 24,
             height: 1.2,
-            color: HandongColors.textOrangeBody,
-          ),
-          textAlign: TextAlign.center,
-          keyboardType: obscureText ? TextInputType.text : TextInputType.number,
-          decoration: InputDecoration(
-            border: InputBorder.none, // TextField 자체 테두리 제거 (상자 두개 방지)
-            focusedBorder: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isDense: true,
-            hintText: hintText, // 힌트 텍스트 (학번 적어줘!, 비밀번호 쉿!)
-            hintStyle: HandongTextStyles.inputHint.copyWith(height: 1.2),
           ),
         ),
       ),
@@ -120,209 +249,210 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 상대 좌표 계산을 위한 기준점 (박스 시작 위치)
-    // Box Top: 61, Box Left: 24 (from design)
-
     return Scaffold(
       backgroundColor: HandongColors.yellowBg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: SizedBox(
-            // 전체 화면 크기 확보 (디자인 기준 412x917 비율 유지 노력)
-            width: 412,
-            height: 917,
-            child: Stack(
-              children: [
-                // 1. 노란색 박스 (Main Container)
-                Positioned(
-                  top: 61,
-                  left: 24,
-                  child: Container(
-                    width: 364,
-                    height: 856,
-                    decoration: BoxDecoration(
-                      color: HandongColors.yellowCard,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    // 박스 내부 Stack
-                    child: Stack(
-                      children: [
-                        // 언어 설정 버튼 (Top: 22 relative to box, Left: 20 padding)
-                        // XML에는 좌표가 명확치 않으나, SignUp 텍스트(Top 22)와 대칭되게 배치
-                        Positioned(
-                          top: 22,
-                          left: 24,
-                          child: SvgPicture.string(
-                            _langIconSvg,
-                            width: 30,
-                            height: 30,
+        child: SizedBox(
+          width: 412,
+          height: 917,
+          child: Stack(
+            children: [
+              // 기본 콘텐츠
+              SingleChildScrollView(
+                child: SizedBox(
+                  width: 412,
+                  height: 917,
+                  child: Stack(
+                    children: [
+                      // 1. 노란색 박스 (Main Container)
+                      Positioned(
+                        top: 61,
+                        left: 24,
+                        child: Container(
+                          width: 364,
+                          height: 856,
+                          decoration: BoxDecoration(
+                            color: HandongColors.yellowCard,
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ),
-
-                        // "혹시 처음이야?" (SignUp Link)
-                        // Using Right alignment for better responsiveness and to avoid clipping
-                        Positioned(
-                          top: 22,
-                          right: 20, // Adjusted padding from right
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignUpPage(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              '혹시 처음이야?',
-                              style: HandongTextStyles.signupLink.copyWith(
-                                height: 1.2,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                        ),
-
-                        // 로고
-                        // XML: Left 157 (screen) -> 133 (box)
-                        // XML: Top 222 (screen) -> 161 (box)
-                        Positioned(
-                          top: 161,
-                          left: 133,
-                          child: SvgPicture.string(
-                            _logoSvg,
-                            width: 98.56,
-                            height: 99.07,
-                          ),
-                        ),
-
-                        // 타이틀 "한동 어드벤처"
-                        // XML: Left 94 (screen) -> 70 (box)
-                        // XML: Top 343 (screen) -> 282 (box)
-                        Positioned(
-                          top: 282,
-                          left: 70,
-                          child: SizedBox(
-                            width: 225,
-                            child: Text(
-                              '한동 어드벤처',
-                              style: HandongTextStyles.title.copyWith(
-                                height: 1.2,
-                              ), // height 조정
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-
-                        // 서브타이틀 "새내기 어서와!"
-                        // Center alignment within the box
-                        Positioned(
-                          top: 318,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Text(
-                              '새내기 어서와!',
-                              style: HandongTextStyles.subtitle.copyWith(
-                                height: 1.2,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-
-                        // 학번 입력 박스
-                        // XML: Left 63 (screen) -> 39 (box)
-                        // XML: Top 459 (screen) -> 398 (box)
-                        Positioned(
-                          top: 398,
-                          left: 39,
-                          child: _buildInputField(
-                            controller: _idController,
-                            obscureText: false,
-                            hintText: '학번 적어줘!',
-                          ),
-                        ),
-
-                        // 비밀번호 입력 박스
-                        // XML: Left 63 -> 39 (box)
-                        // XML: Top 556 -> 495 (box)
-                        Positioned(
-                          top: 495,
-                          left: 39,
-                          child: _buildInputField(
-                            controller: _pwController,
-                            obscureText: true,
-                            hintText: '비밀번호 쉿!',
-                          ),
-                        ),
-
-                        // 입력 완료 버튼
-                        // XML: Left 63 -> 39 (box)
-                        // XML: Top 668 -> 607 (box)
-                        Positioned(
-                          top: 607,
-                          left: 39,
-                          // InkWell을 사용하여 클릭 효과 및 동작 보장
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: _isLoading ? null : _login,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                width: 286,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: HandongColors.bluePoint,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: _isLoading
-                                    ? const CircularProgressIndicator(
-                                        color: Colors.white,
-                                      )
-                                    : Text(
-                                        '출발하기!',
-                                        style: HandongTextStyles.buttonText
-                                            .copyWith(height: 1.2),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 비밀번호 찾기
-                        // Center alignment within the box
-                        Positioned(
-                          top: 746,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const FindPassPage(),
+                          child: Stack(
+                            children: [
+                              // 왼쪽 상단 언어 설정 아이콘
+                              Positioned(
+                                top: 22,
+                                left: 24,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _isLanguageOverlayOpen =
+                                          true; // 아이콘 클릭 시 팝업 열기
+                                    });
+                                  },
+                                  child: SvgPicture.string(
+                                    _langIconSvg,
+                                    width: 30,
+                                    height: 30,
                                   ),
-                                );
-                              },
-                              child: Text(
-                                '비밀번호 찾아줄게!',
-                                style: HandongTextStyles.smallLink.copyWith(
-                                  height: 1.2,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
-                            ),
+
+                              // "혹시 처음이야?" (SignUp Link)
+                              Positioned(
+                                top: 22,
+                                right: 20,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignUpPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    '혹시 처음이야?',
+                                    style: HandongTextStyles.signupLink
+                                        .copyWith(height: 1.2),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                              ),
+
+                              // 로고
+                              Positioned(
+                                top: 161,
+                                left: 133,
+                                child: SvgPicture.string(
+                                  _logoSvg,
+                                  width: 98.56,
+                                  height: 99.07,
+                                ),
+                              ),
+
+                              // 타이틀
+                              Positioned(
+                                top: 282,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: Text(
+                                    '한동 어드벤처',
+                                    style: HandongTextStyles.title.copyWith(
+                                      height: 1.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+
+                              // 서브타이틀
+                              Positioned(
+                                top: 318,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: Text(
+                                    '새내기 어서와!',
+                                    style: HandongTextStyles.subtitle.copyWith(
+                                      height: 1.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+
+                              // 학번 입력 박스
+                              Positioned(
+                                top: 398,
+                                left: 39,
+                                child: _buildInputField(
+                                  controller: _idController,
+                                  obscureText: false,
+                                  hintText: '학번 적어줘!',
+                                ),
+                              ),
+
+                              // 비밀번호 입력 박스
+                              Positioned(
+                                top: 495,
+                                left: 39,
+                                child: _buildInputField(
+                                  controller: _pwController,
+                                  obscureText: true,
+                                  hintText: '비밀번호 쉿!',
+                                ),
+                              ),
+
+                              // 입력 완료 버튼
+                              Positioned(
+                                top: 607,
+                                left: 39,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _isLoading ? null : _login,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      width: 286,
+                                      height: 72,
+                                      decoration: BoxDecoration(
+                                        color: HandongColors.bluePoint,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: _isLoading
+                                          ? const CircularProgressIndicator(
+                                              color: Colors.white,
+                                            )
+                                          : Text(
+                                              '출발하기!',
+                                              style: HandongTextStyles
+                                                  .buttonText
+                                                  .copyWith(height: 1.2),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // 비밀번호 찾기
+                              Positioned(
+                                top: 746,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const FindPassPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      '비밀번호 찾아줄게!',
+                                      style: HandongTextStyles.smallLink
+                                          .copyWith(height: 1.2),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // 2. 언어 선택 오버레이 (화면 중앙 팝업)
+              _buildLanguageOverlay(context),
+            ],
           ),
         ),
       ),
