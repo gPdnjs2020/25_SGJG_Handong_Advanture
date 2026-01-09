@@ -1,37 +1,28 @@
-<<<<<<< HEAD
-import 'package:flutter/cupertino.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-Color haPrimaryColor = Color.fromARGB(255, 38, 103, 240); // 기본 색상 (파랑)
+import 'home_page.dart';
+import 'my_page.dart';
 
+String userName = "user1";
+int level = 1;
+String studentNumber = "22000000";
+int wholeRank = 300;
+int levelRank = 300;
+int pointMax = 1000;
+int userPoint = 300;
+double userProgress = userPoint / pointMax;
+File? profileImage;
+
+List<String> page = ["Home", "Rank!", "My Page"];
+List<Image> image_level = [
+  Image.asset('assets/seed.png'),
+  Image.asset('assets/sprout.png'),
+  Image.asset('assets/flower.png'),
+];
 void main() {
   runApp(MyApp());
-=======
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:handong_adventure/login.dart';
-import 'package:handong_adventure/rank.dart';
-import 'firebase_options.dart';
-
-// ================= 디자인 시스템 (SVG Exact Colors) =================
-const Color kBgYellow = Color(0xFFFFF176); // 메인 배경
-const Color kCardYellow = Color(0xFFFFF9C4); // 카드 배경 (연한 노랑)
-const Color kNavGrey = Color(0xFF818181); // 하단 바 (회색)
-const Color kTextBlack = Color(0xFF000000); // 텍스트 (검정)
-const Color kInputBorder = Color(0xFF462C1C); // 입력창 테두리 (진한 갈색)
-const Color kBlueBtn = Color(0xFF003E7E); // 버튼 (한동 블루)
-const Color kRankGold = Color(0xFFF9A825); // 랭킹 골드
-const Color kWhite = Colors.white;
-
-const double kCardRadius = 24.0; // 카드 둥근 모서리
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
->>>>>>> main
 }
 
 class MyApp extends StatelessWidget {
@@ -40,7 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-<<<<<<< HEAD
+      theme: ThemeData(textTheme: GoogleFonts.gaeguTextTheme()),
       debugShowCheckedModeBanner: false,
       home: HandongAdventure(),
     );
@@ -56,120 +47,164 @@ class HandongAdventure extends StatefulWidget {
   State<HandongAdventure> createState() => _HandongAdventureState();
 }
 
-class _HandongAdventureState extends State<HandongAdventure> {
+class _HandongAdventureState extends State<HandongAdventure>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  int currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        currentIndex = _tabController.index;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 1. 바깥쪽 테두리 (진한 노랑)
     return Scaffold(
-      appBar: AppBar(
-        title: Image.asset('assets/logo.png', height: 32), // 로고 만들어지면 바꾸기
-        centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: Icon(CupertinoIcons.person, color: Colors.black), // 마이페이지 버튼
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              color: const Color(0xFFFFF176),
+              padding: const EdgeInsets.fromLTRB(24, 61, 24, 0),
+              child: ClipRRect(
+                // 3. 안쪽 화면의 모서리를 둥글게
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(25),
+                  topRight: Radius.circular(25),
+                ),
+                child: Scaffold(
+                  backgroundColor: const Color(0xfffff9c4),
+                  appBar: AppBar(
+                    toolbarHeight: 90,
+                    backgroundColor: const Color(0x0ffff9c4),
+                    elevation: 0,
+                    centerTitle: false,
+                    title: _buildCustomTitle(),
+                    bottom: _buildCustomBottomBar(),
+                  ),
+
+                  body: TabBarView(
+                    controller: _tabController,
+                    children: [HomePage(), RankPage(), MyPage()],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
-        backgroundColor: Colors.white, // appbar 색상
-      ),
-      body: IndexedStack(
-        index: currentIndex,
-        children: [HomePage(), RankPage(), SupportPage()],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (newIndex) {
-          setState(() {
-            currentIndex = newIndex;
-          });
-        },
-        selectedItemColor: haPrimaryColor, // 선택된 아이콘 색상
-        unselectedItemColor: Colors.grey, // 선택되지 않은 아이콘 색상
-        showSelectedLabels: false, // 선택된 항목 label 숨기기
-        showUnselectedLabels: false, // 선택되지 않은 항목 label 숨기기
-        type: BottomNavigationBarType.fixed, // 선택시 아이콘 움직이지 않기
-        backgroundColor: Colors.white,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.paid), label: ""),
+          Container(
+            width: double.infinity,
+            height: 59,
+            color: const Color(0xff818181),
+          ),
         ],
       ),
     );
   }
-}
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: haPrimaryColor,
-      body: SafeArea(
-        child: SizedBox(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  margin: EdgeInsets.all(0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Quiz1()),
-                      );
-                    },
-                    child: Text(
-                      'Lv1  새내기',
-                      style: TextStyle(fontSize: 25, color: Colors.black),
+  Widget _buildCustomTitle() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0, bottom: 20.0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/logo.png',
+                height: 50,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.image),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: const Text(
+                  "한동 어드벤처",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              SizedBox(width: 90),
+              Container(
+                width: 114,
+                height: 40,
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Text(
+                    page[currentIndex],
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
                     ),
                   ),
                 ),
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  margin: EdgeInsets.all(0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Quiz2()),
-                      );
-                    },
-                    child: Text(
-                      'Lv2  헌내기',
-                      style: TextStyle(fontSize: 25, color: Colors.black),
-                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildCustomBottomBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(55),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(40, 10, 40, 0),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: Color(0xff613C2A),
+              borderRadius: BorderRadius.circular(45),
+              border: Border.all(color: Color(0xff613C2A), width: 2.0),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(45.0)),
+              child: BottomNavigationBar(
+                iconSize: 25,
+                currentIndex: currentIndex,
+                onTap: (newIndex) {
+                  setState(() {
+                    currentIndex = newIndex;
+                    _tabController.animateTo(newIndex);
+                  });
+                },
+                selectedItemColor: Color(0xffF9A825), // 선택된 아이콘 색상
+                unselectedItemColor: Color(0xff613C2A), // 선택되지 않은 아이콘 색상
+                showSelectedLabels: false, // 선택된 항목 label 숨기기
+                showUnselectedLabels: false, // 선택되지 않은 항목 label 숨기기
+                type: BottomNavigationBarType.fixed, // 선택시 아이콘 움직이지 않기
+                backgroundColor: Color(0xffF9E9C8),
+                items: [
+                  BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.leaderboard),
+                    label: "",
                   ),
-                ),
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  margin: EdgeInsets.all(0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Quiz3()),
-                      );
-                    },
-                    child: Text(
-                      'Lv3  고인물',
-                      style: TextStyle(fontSize: 25, color: Colors.black),
-                    ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.account_circle),
+                    label: "",
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -188,21 +223,13 @@ class RankPage extends StatefulWidget {
 class _RankPageState extends State<RankPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return Scaffold(backgroundColor: Color(0xfffff9c4));
   }
 }
 
-class SupportPage extends StatefulWidget {
-  const SupportPage({super.key});
-
-  @override
-  State<SupportPage> createState() => _SupportPageState();
-}
-
-class _SupportPageState extends State<SupportPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+// 개발자들에게 후원/피드백
+/*
+Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SizedBox(
@@ -227,7 +254,6 @@ class _SupportPageState extends State<SupportPage> {
                   ),
                   SizedBox(height: 100),
                   ElevatedButton(onPressed: () {}, child: Text('커피 한잔 주기')),
-
                   SizedBox(height: 100),
                   ElevatedButton(onPressed: () {}, child: Text('독설 한번 하기')),
                 ],
@@ -237,155 +263,41 @@ class _SupportPageState extends State<SupportPage> {
         ),
       ),
     );
-  }
-}
+*/
 
-class Quiz1 extends StatefulWidget {
-  const Quiz1({super.key});
-
-  @override
-  State<Quiz1> createState() => _Quiz1State();
-}
-
-class _Quiz1State extends State<Quiz1> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [Text('새내기 퀴즈', textAlign: TextAlign.center)],
-        ),
-      ),
-    );
-  }
-}
-
-class Quiz2 extends StatefulWidget {
-  const Quiz2({super.key});
-
-  @override
-  State<Quiz2> createState() => _Quiz2State();
-}
-
-class _Quiz2State extends State<Quiz2> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [Text('헌내기 퀴즈', textAlign: TextAlign.center)],
-        ),
-      ),
-    );
-  }
-}
-
-class Quiz3 extends StatefulWidget {
-  const Quiz3({super.key});
-
-  @override
-  State<Quiz3> createState() => _Quiz3State();
-}
-
-class _Quiz3State extends State<Quiz3> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [Text('고인물 퀴즈', textAlign: TextAlign.center)],
-        ),
-=======
-      title: 'Handong Adventure',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: kBgYellow,
-        scaffoldBackgroundColor: kBgYellow,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: kBgYellow,
-          primary: kTextBlack,
-          surface: kCardYellow,
-          background: kBgYellow,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-
-        appBarTheme: const AppBarTheme(
-          backgroundColor: kBgYellow,
-          foregroundColor: kTextBlack,
-          centerTitle: true,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          titleTextStyle: TextStyle(
-            color: kTextBlack,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
-          iconTheme: IconThemeData(color: kTextBlack),
-        ),
-
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kBlueBtn, // SVG: Blue Button
-            foregroundColor: kWhite,
-            elevation: 4,
-            shadowColor: Colors.black.withOpacity(0.25),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+/*
+bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(45.0)),
+              child: BottomNavigationBar(
+                iconSize: 25,
+                currentIndex: currentIndex,
+                onTap: (newIndex) {
+                  setState(() {
+                    currentIndex = newIndex;
+                  });
+                },
+                selectedItemColor: Color(0xff008EFF), // 선택된 아이콘 색상
+                unselectedItemColor: Colors.white, // 선택되지 않은 아이콘 색상
+                showSelectedLabels: false, // 선택된 항목 label 숨기기
+                showUnselectedLabels: false, // 선택되지 않은 항목 label 숨기기
+                type: BottomNavigationBarType.fixed, // 선택시 아이콘 움직이지 않기
+                backgroundColor: Colors.black,
+                items: [
+                  BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.leaderboard),
+                    label: "",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.account_circle),
+                    label: "",
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: kWhite, // SVG: White Fill
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-          // SVG: Stroke #462C1C width 2
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kInputBorder, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kInputBorder, width: 2),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kBlueBtn, width: 2),
-          ),
-          hintStyle: TextStyle(
-            color: Colors.grey.withOpacity(0.7),
-            fontWeight: FontWeight.w600,
-          ),
-          labelStyle: const TextStyle(
-            color: kTextBlack,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) return const RankingPage();
-          return const LoginPage();
-        },
->>>>>>> main
-      ),
-    );
-  }
-}
+*/
