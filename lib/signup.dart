@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart'; // 프로젝트 확인용
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'handong_theme.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _idController = TextEditingController();
   final _nameController = TextEditingController();
   final _pwController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   // 디버깅용: 현재 연결된 프로젝트 ID 가져오기
@@ -45,31 +47,14 @@ class _SignUpPageState extends State<SignUpPage> {
 ''';
 
   Future<void> _register() async {
-    // 1. 비밀번호 길이 확인
-    if (_pwController.text.length < 6) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('비밀번호는 6자리 이상이어야 합니다.')));
-      return;
-    }
-
-    // 2. 빈 칸 확인
-    if (_idController.text.isEmpty ||
-        _nameController.text.isEmpty ||
-        _pwController.text.isEmpty) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('모든 정보를 입력해주세요.')));
-      return;
-    }
+    // 폼 검증
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isLoading = true);
     UserCredential? cred;
 
     try {
-      // 3. Firebase Authentication 계정 생성
+      // Firebase Authentication 계정 생성
       cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: '${_idController.text.trim()}@handong.edu',
         password: _pwController.text.trim(),
@@ -77,7 +62,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
       print("Auth created: ${cred.user!.uid}"); // 디버그용 로그
 
-      // 4. Firestore에 유저 정보 저장 (타임아웃 10초)
+      // Firestore에 유저 정보 저장 (타임아웃 10초)
       await FirebaseFirestore.instance
           .collection('users')
           .doc(cred.user!.uid)
@@ -91,46 +76,57 @@ class _SignUpPageState extends State<SignUpPage> {
           .timeout(const Duration(seconds: 10));
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('가입 성공! 로그인해주세요.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('가입 성공! 로그인해주세요.')));
         Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = '회원가입 실패';
       if (e.code == 'email-already-in-use') {
-        // 이미 가입된 경우: 어떤 프로젝트인지 힌트 제공
         errorMessage = '이미 가입된 학번입니다.\n(Project: $_currentProjectId)';
       } else if (e.code == 'weak-password') {
         errorMessage = '비밀번호 보안 수준이 낮습니다.';
       } else if (e.code == 'network-request-failed') {
         errorMessage = '네트워크 연결을 확인해주세요.';
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = '시도가 너무 많습니다. 잠시 후 다시 시도해주세요.';
       }
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
     } catch (e) {
       // Firestore 저장 실패 시 -> 계정 롤백(삭제)
       print("Firestore Failed: $e");
       if (cred != null && cred.user != null) {
-        await cred.user!.delete();
+        try {
+          await cred.user!.delete();
+        } catch (deleteErr) {
+          print("Failed to rollback user: $deleteErr");
+        }
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('데이터베이스 오류: $e\n다시 시도해주세요.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('데이터베이스 오류. 다시 시도해주세요.')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 입력 필드 빌더
+  @override
+  void dispose() {
+    _idController.dispose();
+    _nameController.dispose();
+    _pwController.dispose();
+    super.dispose();
+  }
+
+  // 입력 필드 빌더 (TextFormField 기반, validator와 포맷터 지원)
   Widget _buildInputField({
     required TextEditingController controller,
     required bool obscureText,
     required String hintText,
+    String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
+    TextInputType? keyboardType,
+    bool enabled = true,
+    TextInputAction? textInputAction,
   }) {
     return Container(
       width: 286,
@@ -138,7 +134,6 @@ class _SignUpPageState extends State<SignUpPage> {
       decoration: BoxDecoration(
         color: HandongColors.inputBg,
         borderRadius: BorderRadius.circular(12),
-        // 외부 테두리만 설정 (이중 상자 해결)
         border: Border.all(color: HandongColors.brownBorder, width: 4),
         boxShadow: [
           BoxShadow(
@@ -149,27 +144,26 @@ class _SignUpPageState extends State<SignUpPage> {
         ],
       ),
       alignment: Alignment.center,
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: obscureText,
-        // 입력 중에도 주황색 유지
+        enabled: enabled,
+        inputFormatters: inputFormatters ?? [],
+        validator: validator,
         style: HandongTextStyles.inputHint.copyWith(
           fontSize: 18,
           color: HandongColors.textOrangeBody,
           height: 1.2,
         ),
         textAlign: TextAlign.center,
-        keyboardType: obscureText ? TextInputType.text : TextInputType.number,
+        keyboardType: keyboardType ?? (obscureText ? TextInputType.text : TextInputType.number),
+        textInputAction: textInputAction,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         decoration: InputDecoration(
-          isCollapsed: true, // 내부 패딩 제거
-          contentPadding: const EdgeInsets.symmetric(vertical: 16), // 수직 중앙 정렬
-          border: InputBorder.none, // 내부 테두리 제거 (이중 상자 해결)
-          focusedBorder: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
+          isCollapsed: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+          border: InputBorder.none,
           hintText: hintText,
-          // 힌트 텍스트 스타일
           hintStyle: HandongTextStyles.inputHint.copyWith(
             fontSize: 18,
             height: 1.2,
@@ -201,7 +195,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       color: HandongColors.yellowCard,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Stack(
+                    child: Form(key: _formKey, child: Stack(
                       children: [
                         // 로고
                         Positioned(
@@ -257,6 +251,10 @@ class _SignUpPageState extends State<SignUpPage> {
                               controller: _nameController,
                               obscureText: false,
                               hintText: '이름이 뭐야?',
+                              validator: (v) => v == null || v.trim().isEmpty ? '이름을 입력해주세요.' : null,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.next,
+                              enabled: !_isLoading,
                             ),
                           ),
                         ),
@@ -271,6 +269,15 @@ class _SignUpPageState extends State<SignUpPage> {
                               controller: _idController,
                               obscureText: false,
                               hintText: '학번 알려줘!',
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return '학번을 입력해주세요.';
+                                if (!RegExp(r'^\d{8}\$').hasMatch(v.trim())) return '학번은 숫자 8자리여야 합니다.';
+                                return null;
+                              },
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)],
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              enabled: !_isLoading,
                             ),
                           ),
                         ),
@@ -285,6 +292,14 @@ class _SignUpPageState extends State<SignUpPage> {
                               controller: _pwController,
                               obscureText: true,
                               hintText: '둘만의 비밀번호를 만들어보자',
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return '비밀번호를 입력해주세요.';
+                                if (v.length < 6) return '비밀번호는 6자리 이상이어야 합니다.';
+                                return null;
+                              },
+                              keyboardType: TextInputType.visiblePassword,
+                              textInputAction: TextInputAction.done,
+                              enabled: !_isLoading,
                             ),
                           ),
                         ),

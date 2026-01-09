@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- 위치 권한 사용 설명 (퀴즈 기능에 필요) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>앱 사용 중 주변 퀴즈 기능을 위해 위치 권한이 필요합니다.</string>
+
 </dict>
 </plist>

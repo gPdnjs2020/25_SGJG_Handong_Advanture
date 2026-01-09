@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 인터넷 (개발용) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 위치 권한 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 백그라운드 위치 (Android 10+) -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
     <application
         android:label="handong_adventure"
         android:name="${applicationName}"
@@ -30,6 +39,8 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Naver Map Client ID (set here, not in Dart) -->
+        <meta-data android:name="com.naver.maps.map.CLIENT_ID" android:value="ihfabpqozz" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
