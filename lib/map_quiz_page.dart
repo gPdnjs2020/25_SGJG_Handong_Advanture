@@ -10,6 +10,12 @@ import 'package:latlong2/latlong.dart';
 import 'zones.dart'; // BuildingZone, distanceMeters
 import 'location_permissions.dart';
 
+// Quiz modules (new services/widgets)
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/quiz_repository.dart';
+import 'services/zone_trigger.dart';
+import 'widgets/quiz_dialog.dart';
+
 class MapQuizPage extends StatefulWidget {
   const MapQuizPage({super.key});
 
@@ -27,6 +33,15 @@ class _MapQuizPageState extends State<MapQuizPage> {
   // Overlay references (create once, update frequently)
   naver.NMarker? _meMarker;
   naver.NCircleOverlay? _zoneOverlay;
+
+  // Quiz components
+  final _quizRepo = QuizRepository();
+  ZoneTrigger? _zoneTrigger;
+  final _zones = <BuildingZone>[];
+  final _recentQuizIds = <String>[]; // keep last 10
+  bool _quizOpen = false;
+  String _userLevel = 'newbie'; // TODO: replace with real user profile
+
 
   // ✅ "지금 내 위치 기준" 테스트 존
   BuildingZone? _testZone;
@@ -57,6 +72,17 @@ class _MapQuizPageState extends State<MapQuizPage> {
       await _refreshPermissionState();
       final ok = await ensureLocationPermission(context);
       await _refreshPermissionState();
+      // warm up quiz cache
+      await _quizRepo.warmUpCache(level: _userLevel);
+
+      // create engine with current zones (for now include _testZone if not null)
+      final zones = <BuildingZone>[];
+      if (_testZone != null) zones.add(_testZone!);
+      // TODO: later replace with real list of zones fetched from backend or static file
+      _zoneEngine = ZoneTriggerEngine(zones: zones, onEnter: (zone) async {
+        await _onZoneEnter(zone);
+      });
+
       if (ok) {
         _startLocation();
       }
@@ -97,15 +123,31 @@ class _MapQuizPageState extends State<MapQuizPage> {
             center: me,
             radiusMeters: 30, // 필요하면 50으로 키워서 테스트
           );
-        }
 
-        setState(() {
-          _me = me;
-          _isTracking = true;
-        });
-
-        // Update overlays on the native map if possible
+          // register in zones list and create trigger
+          if (_zones.every((z) => z.id != _testZone!.id)) _zones.add(_testZone!);
+          if (_zoneTrigger == null) {
+            _zoneTrigger = ZoneTrigger(zones: _zones, onZoneEnter: (zoneId) async {
+              await _onZoneEnter(zoneId);
+            });
+          }
+        } else {
+          // keep test zone center in sync with first location logic (optional)
+          _testZone = BuildingZone(
+            id: _testZone!.id,
+            name: _testZone!.name,
+            center: me,
+            radiusMeters: _testZone!.radiusMeters,
+          );
+          // update zones list center
+          final idx = _zones.indexWhere((z) => z.id == _testZone!.id);
+          if (idx != -1) _zones[idx] = _testZone!;
         _updateMapOverlays();
+
+        // Notify zone trigger
+        if (_zoneTrigger != null && _me != null) {
+          _zoneTrigger!.onLocation(_me!);
+        }
 
         // ✅ 카드 안 지도도 내 위치로 따라오게
         if (_naverController != null) {
@@ -251,6 +293,37 @@ class _MapQuizPageState extends State<MapQuizPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _onZoneEnter(String zoneId) async {
+    if (!mounted) return;
+    if (_quizOpen) return; // prevent reentry
+
+    final exclude = Set<String>.from(_recentQuizIds);
+    final quiz = await _quizRepo.getRandomQuiz(_userLevel, excludeIds: exclude);
+    if (quiz == null) return;
+
+    // push id to recent list
+    _recentQuizIds.insert(0, quiz.id);
+    if (_recentQuizIds.length > 10) _recentQuizIds.removeLast();
+
+    _quizOpen = true;
+    try {
+      final res = await showQuizDialog(context, quiz);
+      if (res == null) return;
+
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+      await _quizRepo.logAttempt(uid: uid, zoneId: zoneId, quizId: quiz.id, correct: res.correct, userAnswer: res.answer, level: quiz.level);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.correct ? '정답입니다!' : '오답입니다!')));
+      }
+
+      // Mark zone as exited so next entry can trigger again
+      _zoneTrigger?.markExited(zoneId);
+    } finally {
+      _quizOpen = false;
+    }
   }
 
   // 권한 라벨/색상 헬퍼
