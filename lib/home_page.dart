@@ -85,7 +85,13 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   width: 18,
                                   height: 18,
-                                  child: image_level[level],
+                                  child: ColorFiltered(
+                                    colorFilter: ColorFilter.mode(
+                                      Colors.black,
+                                      BlendMode.srcIn,
+                                    ),
+                                    child: imageLevel[level - 1],
+                                  ),
                                 ),
                                 SizedBox(width: 10),
                                 Text(
@@ -192,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                                       Container(
                                         width: 18,
                                         height: 18,
-                                        child: image_level[2],
+                                        child: imageLevel[0],
                                       ),
                                     ],
                                   ),
@@ -233,7 +239,7 @@ class _HomePageState extends State<HomePage> {
                                       Container(
                                         width: 18,
                                         height: 18,
-                                        child: image_level[1],
+                                        child: imageLevel[1],
                                       ),
                                     ],
                                   ),
@@ -274,7 +280,7 @@ class _HomePageState extends State<HomePage> {
                                       Container(
                                         width: 18,
                                         height: 18,
-                                        child: image_level[2],
+                                        child: imageLevel[2],
                                       ),
                                     ],
                                   ),

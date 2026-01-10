@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'main.dart';
+import 'login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -367,9 +369,28 @@ class _MyPageState extends State<MyPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
+                      // 1. 현재 띄워져 있는 팝업(다이얼로그) 닫기
                       Navigator.pop(context);
-                      // 실제 로그아웃 로직 추가 위치
+
+                      try {
+                        // 2. 실제 로그아웃 처리
+                        await FirebaseAuth.instance.signOut();
+
+                        // 3. 로그아웃 성공 후 로그인 페이지로 이동
+                        if (context.mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LoginPage(),
+                            ),
+                            (route) => false, // 스택에 쌓인 모든 이전 화면 제거
+                          );
+                        }
+                      } catch (e) {
+                        // 에러 발생 시 처리
+                        print("로그아웃 중 오류 발생: $e");
+                      }
                     },
                     child: Text(
                       selectedLanguage == '한국어' ? "네" : "Yes",

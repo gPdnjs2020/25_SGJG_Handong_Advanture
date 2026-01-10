@@ -16,7 +16,7 @@ double userProgress = userPoint / pointMax;
 File? profileImage;
 
 List<String> page = ["Home", "Rank!", "My Page"];
-List<Image> image_level = [
+List<Image> imageLevel = [
   Image.asset('assets/seed.png'),
   Image.asset('assets/sprout.png'),
   Image.asset('assets/flower.png'),
